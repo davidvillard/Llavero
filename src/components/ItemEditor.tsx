@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { strength } from '../lib/generator'
 import { parseTotp } from '../lib/totp'
+import { hostOf } from '../lib/url'
 import type { ItemData } from '../lib/vault'
 import Generator from './Generator'
 import { DiceIcon, EyeIcon } from './icons'
@@ -13,14 +14,6 @@ interface Props {
 
 const EMPTY: ItemData = { title: '', url: '', username: '', password: '', totp: '', notes: '', tags: [] }
 const STRENGTH_LABELS = ['Débil', 'Aceptable', 'Fuerte', 'Muy fuerte']
-
-function hostOf(url: string): string {
-  try {
-    return new URL(/^[a-z]+:/i.test(url) ? url : 'https://' + url).host.replace(/^www\./, '')
-  } catch {
-    return ''
-  }
-}
 
 export default function ItemEditor({ initial, onSave, onCancel }: Props) {
   const start = initial ?? EMPTY

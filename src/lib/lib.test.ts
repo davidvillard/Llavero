@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { createVaultKey, decryptJson, deriveMasterKeys, encryptJson, unwrapVaultKey } from './crypto'
 import { generatePassword } from './generator'
 import { base32Decode, parseTotp, totpCode } from './totp'
+import { hostMatches, hostOf, safeHref } from './url'
 
 describe('totp (RFC 6238)', () => {
   // Vectores oficiales del RFC 6238, secreto ASCII "12345678901234567890" (SHA-1, 8 dígitos).
@@ -52,13 +53,24 @@ describe('cifrado', () => {
 })
 
 describe('enlaces', () => {
-  it('solo permite http(s)', async () => {
-    const { safeHref } = await import('../components/ItemDetail')
+  it('solo permite http(s)', () => {
     expect(safeHref('github.com')).toBe('https://github.com/')
     expect(safeHref('http://x.es/a')).toBe('http://x.es/a')
     expect(safeHref('javascript:alert(1)')).toBeNull()
     expect(safeHref('data:text/html,hola')).toBeNull()
     expect(safeHref('')).toBeNull()
+  })
+
+  it('reconoce el mismo sitio y sus subdominios, nunca al revés', () => {
+    expect(hostOf('https://www.GitHub.com/login')).toBe('github.com')
+    expect(hostMatches('github.com', 'github.com')).toBe(true)
+    expect(hostMatches('github.com', 'www.github.com')).toBe(true)
+    expect(hostMatches('github.com', 'gist.github.com')).toBe(true)
+    expect(hostMatches('accounts.google.com', 'google.com')).toBe(false)
+    expect(hostMatches('github.com', 'github.com.evil.io')).toBe(false)
+    expect(hostMatches('github.com', 'notgithub.com')).toBe(false)
+    expect(hostMatches('', 'github.com')).toBe(false)
+    expect(hostMatches('javascript:alert(1)', 'alert(1)')).toBe(false)
   })
 })
 

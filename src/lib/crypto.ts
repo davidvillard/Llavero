@@ -82,23 +82,34 @@ async function open(key: CryptoKey, sealed: string, context: string): Promise<Ui
   return new Uint8Array(pt)
 }
 
-export async function createVaultKey(wrapKey: CryptoKey, userId: string): Promise<{ vaultKey: CryptoKey; wrapped: string }> {
+// `extractable` solo lo usa la extensión, que guarda la clave en memoria de sesión del navegador
+// para no pedir la contraseña maestra cada vez que se abre. La web nunca la hace exportable.
+
+export async function createVaultKey(
+  wrapKey: CryptoKey,
+  userId: string,
+  extractable = false,
+): Promise<{ vaultKey: CryptoKey; wrapped: string }> {
   const raw = crypto.getRandomValues(new Uint8Array(32))
   const wrapped = await seal(wrapKey, raw, 'vault-key:' + userId)
-  const vaultKey = await importVaultKey(raw)
+  const vaultKey = await importVaultKey(raw, extractable)
   raw.fill(0)
   return { vaultKey, wrapped }
 }
 
-export async function unwrapVaultKey(wrapKey: CryptoKey, wrapped: string, userId: string): Promise<CryptoKey> {
+export async function unwrapVaultKey(wrapKey: CryptoKey, wrapped: string, userId: string, extractable = false): Promise<CryptoKey> {
   const raw = await open(wrapKey, wrapped, 'vault-key:' + userId)
-  const key = await importVaultKey(raw)
+  const key = await importVaultKey(raw, extractable)
   raw.fill(0)
   return key
 }
 
-function importVaultKey(raw: Uint8Array<ArrayBuffer>): Promise<CryptoKey> {
-  return crypto.subtle.importKey('raw', raw, 'AES-GCM', false, ['encrypt', 'decrypt'])
+export function importVaultKey(raw: Uint8Array<ArrayBuffer>, extractable = false): Promise<CryptoKey> {
+  return crypto.subtle.importKey('raw', raw, 'AES-GCM', extractable, ['encrypt', 'decrypt'])
+}
+
+export async function exportVaultKey(key: CryptoKey): Promise<string> {
+  return toBase64(new Uint8Array(await crypto.subtle.exportKey('raw', key)))
 }
 
 /** Cifra un objeto JSON ligado a su id (así no se puede mover un cifrado a otra entrada). */

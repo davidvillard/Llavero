@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { safeHref } from '../lib/url'
 import type { Item } from '../lib/vault'
 import { BackIcon, CopyIcon, ExternalIcon, EyeIcon } from './icons'
 import TotpCode from './TotpCode'
@@ -9,18 +10,6 @@ interface Props {
   onEdit: () => void
   onDelete: () => void
   onBack: () => void
-}
-
-/** Solo enlaces http(s): evita que una URL guardada ejecute código (javascript:...). */
-export function safeHref(url: string): string | null {
-  const raw = url.trim()
-  if (!raw) return null
-  try {
-    const u = new URL(/^[a-z][a-z0-9+.-]*:/i.test(raw) ? raw : 'https://' + raw)
-    return u.protocol === 'https:' || u.protocol === 'http:' ? u.href : null
-  } catch {
-    return null
-  }
 }
 
 export function Avatar({ title }: { title: string }) {

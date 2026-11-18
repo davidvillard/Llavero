@@ -3,8 +3,11 @@
 Gestor de contraseñas web, al estilo de Contraseñas de Apple: guardas una vez y lo tienes en cualquier dispositivo.
 Las contraseñas se **cifran en tu navegador** con tu contraseña maestra; Firebase solo guarda datos cifrados que no puede leer.
 
-**Versión 1:** contraseña maestra · guardar / editar / borrar · generador · copiar al portapapeles · códigos 2FA (TOTP) · buscador y etiquetas · bloqueo automático a los 5 minutos.
-**Fase 2 (pendiente):** passkeys, extensión de navegador para autorrellenar, cambiar la contraseña maestra, exportar.
+**Web (v1.0):** contraseña maestra · guardar / editar / borrar · generador · copiar al portapapeles · códigos 2FA (TOTP) · buscador y etiquetas · bloqueo automático a los 5 minutos.
+**Extensión (v1.1):** rellena usuario y contraseña en la web en la que estás, copia códigos 2FA, atajo `Alt+Shift+L`.
+**Pendiente:** guardar contraseñas nuevas al iniciar sesión desde la extensión, passkeys, cambiar la contraseña maestra, exportar.
+
+La versión aparece en la web (pantalla de entrada y barra lateral) y en la extensión. Cada commit lleva su versión y una etiqueta `vX.Y.Z`.
 
 ## Puesta en marcha
 
@@ -29,6 +32,23 @@ npx firebase-tools deploy --project TU-PROJECT-ID
 ```
 
 Esto sube la web y las reglas de [`firestore.rules`](firestore.rules). Te dará una dirección `https://TU-PROJECT-ID.web.app`.
+
+## Extensión de navegador (Chrome, Edge, Brave)
+
+```bash
+npm run build:extension
+```
+
+Luego en el navegador: abre `chrome://extensions` (o `edge://extensions`), activa **Modo de desarrollador**,
+pulsa **Cargar descomprimida** y elige la carpeta `dist-extension`. Fija el icono de la llave en la barra.
+
+Uso: en la página de login de una web, pulsa el icono (o `Alt+Shift+L`), desbloquea con tu contraseña maestra
+y pulsa **Rellenar**. Solo se ofrece rellenar si la web coincide con la guardada en la entrada (o es un subdominio suyo),
+y la propia página lo vuelve a comprobar antes de escribir nada, para no caer en webs falsas.
+
+- Permisos mínimos: solo puede tocar la pestaña en la que pulsas el icono, y solo en ese momento (`activeTab`).
+- Se queda desbloqueada 15 minutos desde el último uso; se bloquea sola al cerrar el navegador.
+- Tras cambiar el código, vuelve a ejecutar `npm run build:extension` y pulsa el botón de recargar de la extensión.
 
 ## Cómo funciona la seguridad
 

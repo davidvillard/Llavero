@@ -10,7 +10,7 @@
     "noUnusedParameters": true,
     "skipLibCheck": true,
     "isolatedModules": true,
-    "types": ["vite/client"]
+    "types": ["vite/client", "chrome"]
   },
-  "include": ["src"]
+  "include": ["src", "extension"]
 }

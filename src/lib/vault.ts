@@ -50,12 +50,12 @@ function friendlyError(err: unknown): Error {
 }
 
 /** Crea la cuenta y abre el llavero. */
-export async function register(email: string, master: string): Promise<OpenVault> {
+export async function register(email: string, master: string, extractable = false): Promise<OpenVault> {
   if (master.length < MIN_MASTER_LENGTH) throw new Error(`La contraseña maestra debe tener al menos ${MIN_MASTER_LENGTH} caracteres.`)
   const keys = await deriveMasterKeys(email, master)
   try {
     const cred = await createUserWithEmailAndPassword(auth, normalizeEmail(email), keys.authPassword)
-    return await loadOrCreateKey(cred.user.uid, email, keys.wrapKey)
+    return await loadOrCreateKey(cred.user.uid, email, keys.wrapKey, extractable)
   } catch (err) {
     throw friendlyError(err)
   }
@@ -65,35 +65,35 @@ export async function register(email: string, master: string): Promise<OpenVault
  * Inicia sesión y abre el llavero. Siempre verifica la contraseña maestra contra Firebase
  * antes de tocar la clave, para no crear nunca una clave con una contraseña equivocada.
  */
-export async function openVault(email: string, master: string): Promise<OpenVault> {
+export async function openVault(email: string, master: string, extractable = false): Promise<OpenVault> {
   const keys = await deriveMasterKeys(email, master)
   try {
     const cred = await signInWithEmailAndPassword(auth, normalizeEmail(email), keys.authPassword)
-    return await loadOrCreateKey(cred.user.uid, email, keys.wrapKey)
+    return await loadOrCreateKey(cred.user.uid, email, keys.wrapKey, extractable)
   } catch (err) {
     throw friendlyError(err)
   }
 }
 
-async function loadOrCreateKey(userId: string, email: string, wrapKey: CryptoKey, retried = false): Promise<OpenVault> {
+async function loadOrCreateKey(userId: string, email: string, wrapKey: CryptoKey, extractable: boolean, retried = false): Promise<OpenVault> {
   const ref = doc(db, 'users', userId)
   const snap = await getDoc(ref)
   const wrapped = snap.get('wrappedKey') as string | undefined
   if (wrapped) {
     try {
-      return { userId, email: normalizeEmail(email), key: await unwrapVaultKey(wrapKey, wrapped, userId) }
+      return { userId, email: normalizeEmail(email), key: await unwrapVaultKey(wrapKey, wrapped, userId, extractable) }
     } catch {
       throw new Error('No se pudo descifrar el llavero con esta contraseña maestra.')
     }
   }
 
   // Primera vez: se crea la clave del llavero. Las reglas solo permiten crearla, nunca sobrescribirla.
-  const { vaultKey, wrapped: newWrapped } = await createVaultKey(wrapKey, userId)
+  const { vaultKey, wrapped: newWrapped } = await createVaultKey(wrapKey, userId, extractable)
   try {
     await setDoc(ref, { wrappedKey: newWrapped })
   } catch (err) {
     // Otro dispositivo la creó a la vez: se usa la suya.
-    if (!retried && err instanceof FirebaseError && err.code === 'permission-denied') return loadOrCreateKey(userId, email, wrapKey, true)
+    if (!retried && err instanceof FirebaseError && err.code === 'permission-denied') return loadOrCreateKey(userId, email, wrapKey, extractable, true)
     throw err
   }
   return { userId, email: normalizeEmail(email), key: vaultKey }
