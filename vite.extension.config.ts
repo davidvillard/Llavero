@@ -11,11 +11,14 @@ const manifest = {
   manifest_version: 3,
   name: 'Llavero',
   version: pkg.version,
-  description: 'Rellena tus contraseñas del Llavero en cualquier web. Todo cifrado en tu dispositivo.',
+  description: 'Rellena y guarda tus contraseñas del Llavero en cualquier web. Todo cifrado en tu dispositivo.',
   action: { default_popup: 'popup.html', default_title: 'Llavero', default_icon: icons },
   icons,
-  // activeTab: solo puede tocar la pestaña en la que pulsas el icono, y solo en ese momento.
-  permissions: ['activeTab', 'scripting', 'storage'],
+  permissions: ['scripting', 'storage'],
+  // Necesario para detectar cuándo inicias sesión en una web y ofrecerte guardarla.
+  host_permissions: ['http://*/*', 'https://*/*'],
+  background: { service_worker: 'background.js', type: 'module' },
+  content_scripts: [{ matches: ['http://*/*', 'https://*/*'], js: ['content.js'], run_at: 'document_idle' }],
   commands: { _execute_action: { suggested_key: { default: 'Alt+Shift+L' }, description: 'Abrir Llavero' } },
 }
 
@@ -39,6 +42,14 @@ export default defineConfig({
     outDir: here('./dist-extension'),
     emptyOutDir: true,
     modulePreload: { polyfill: false },
-    rollupOptions: { input: here('./extension/popup.html') },
+    rollupOptions: {
+      input: {
+        popup: here('./extension/popup.html'),
+        background: here('./extension/background.ts'),
+        content: here('./extension/content.ts'),
+      },
+      // Nombres fijos para los que cita el manifest.
+      output: { entryFileNames: (chunk) => (chunk.name === 'popup' ? 'assets/[name]-[hash].js' : '[name].js') },
+    },
   },
 })

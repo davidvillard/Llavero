@@ -115,3 +115,37 @@ body.popup {
 .pop .toast {
   bottom: 48px;
 }
+
+.save-card {
+  margin: 10px 10px 0;
+  padding: 12px 14px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+}
+.save-title {
+  margin: 0;
+  font-weight: 600;
+}
+.save-sub {
+  margin: 2px 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+  overflow-wrap: anywhere;
+}
+.save-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+}
+.pop-tools {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  padding: 4px 10px 10px;
+}
+.pop-tools svg {
+  width: 16px;
+  height: 16px;
+}

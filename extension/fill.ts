@@ -43,3 +43,39 @@ export function fillLogin(username: string, password: string, expectedHost: stri
   if (passwordField && password) setValue(passwordField, password)
   return { ok: true }
 }
+
+export interface NewPasswordResult extends FillResult {
+  /** Usuario que ya estaba escrito en el formulario, si lo hay. */
+  username?: string
+}
+
+/** Registro o cambio de contraseña: pone la contraseña generada en los campos nuevos (y su repetición). */
+export function fillNewPassword(password: string, expectedHost: string): NewPasswordResult {
+  const host = location.hostname.toLowerCase().replace(/^www\./, '')
+  if (!expectedHost || (host !== expectedHost && !host.endsWith('.' + expectedHost))) return { ok: false, reason: 'wrong-site' }
+
+  const visible = (el: HTMLElement) => {
+    const style = getComputedStyle(el)
+    return el.getClientRects().length > 0 && style.visibility !== 'hidden' && style.display !== 'none' && !el.hasAttribute('disabled')
+  }
+  const setValue = (el: HTMLInputElement, value: string) => {
+    el.focus()
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(el, value)
+    el.dispatchEvent(new Event('input', { bubbles: true }))
+    el.dispatchEvent(new Event('change', { bubbles: true }))
+  }
+
+  const inputs = Array.from(document.querySelectorAll('input')).filter(visible)
+  const passwords = inputs.filter((el) => el.type === 'password')
+  // Los vacíos; si ya están todos escritos, los marcados como "contraseña nueva".
+  const empty = passwords.filter((el) => !el.value)
+  const targets = empty.length ? empty : passwords.filter((el) => el.autocomplete === 'new-password')
+  if (!targets.length) return { ok: false, reason: 'no-fields' }
+  targets.forEach((el) => setValue(el, password))
+
+  const userField = inputs
+    .filter((el) => ['text', 'email', 'tel', ''].includes(el.type) && el.value.trim())
+    .filter((el) => el.compareDocumentPosition(targets[0]) & Node.DOCUMENT_POSITION_FOLLOWING)
+    .pop()
+  return { ok: true, username: userField?.value.trim() ?? '' }
+}

@@ -4,8 +4,8 @@ Gestor de contraseñas web, al estilo de Contraseñas de Apple: guardas una vez 
 Las contraseñas se **cifran en tu navegador** con tu contraseña maestra; Firebase solo guarda datos cifrados que no puede leer.
 
 **Web (v1.0):** contraseña maestra · guardar / editar / borrar · generador · copiar al portapapeles · códigos 2FA (TOTP) · buscador y etiquetas · bloqueo automático a los 5 minutos.
-**Extensión (v1.1):** rellena usuario y contraseña en la web en la que estás, copia códigos 2FA, atajo `Alt+Shift+L`.
-**Pendiente:** guardar contraseñas nuevas al iniciar sesión desde la extensión, passkeys, cambiar la contraseña maestra, exportar.
+**Extensión (v1.1–1.2):** rellena usuario y contraseña, ofrece guardar o actualizar al iniciar sesión, sugiere contraseñas seguras al registrarte, copia códigos 2FA, atajo `Alt+Shift+L`.
+**Pendiente:** passkeys, cambiar la contraseña maestra, exportar.
 
 La versión aparece en la web (pantalla de entrada y barra lateral) y en la extensión. Cada commit lleva su versión y una etiqueta `vX.Y.Z`.
 
@@ -42,11 +42,20 @@ npm run build:extension
 Luego en el navegador: abre `chrome://extensions` (o `edge://extensions`), activa **Modo de desarrollador**,
 pulsa **Cargar descomprimida** y elige la carpeta `dist-extension`. Fija el icono de la llave en la barra.
 
-Uso: en la página de login de una web, pulsa el icono (o `Alt+Shift+L`), desbloquea con tu contraseña maestra
-y pulsa **Rellenar**. Solo se ofrece rellenar si la web coincide con la guardada en la entrada (o es un subdominio suyo),
-y la propia página lo vuelve a comprobar antes de escribir nada, para no caer en webs falsas.
+Uso:
+- **Rellenar:** en la página de login, pulsa el icono (o `Alt+Shift+L`) y pulsa **Rellenar**. Solo se ofrece si la web
+  coincide con la guardada (o es un subdominio suyo), y la propia página lo vuelve a comprobar antes de escribir nada,
+  para no caer en webs falsas.
+- **Guardar al iniciar sesión:** cuando entras en una web escribiendo tú la contraseña, Llavero se abre solo y te
+  pregunta si guardarla (o actualizarla, si ya tenías otra para ese usuario). *Ahora no* / *Nunca en esta web*.
+  Si tu navegador no puede abrirlo solo, verás un **1** en el icono.
+- **Sugerir contraseña segura:** en un formulario de registro o de cambio de contraseña, abre Llavero y pulsa
+  *Sugerir contraseña segura*: la escribe en los campos y la guarda al momento, para que no se pierda.
 
-- Permisos mínimos: solo puede tocar la pestaña en la que pulsas el icono, y solo en ese momento (`activeTab`).
+Privacidad y permisos:
+- Para detectar los inicios de sesión, la extensión necesita estar en todas las webs (Chrome lo avisa al instalarla como
+  "leer y cambiar tus datos en todos los sitios web"). Solo mira los formularios cuando los envías, y lo detectado se
+  queda en la memoria del navegador hasta que lo guardas o lo descartas (máximo 5 minutos). Nunca sale de tu equipo sin cifrar.
 - Se queda desbloqueada 15 minutos desde el último uso; se bloquea sola al cerrar el navegador.
 - Tras cambiar el código, vuelve a ejecutar `npm run build:extension` y pulsa el botón de recargar de la extensión.
 
