@@ -1,0 +1,35 @@
+rules_version = '2';
+
+// Reglas de seguridad del Llavero. Cada usuario solo puede leer y escribir lo suyo.
+// El contenido ya llega cifrado desde el navegador: el servidor no puede leerlo.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /users/{uid} {
+      function isOwner() {
+        return request.auth != null && request.auth.uid == uid;
+      }
+
+      // Clave del llavero: se puede leer y crear, pero nunca sobrescribir ni borrar
+      // (si se perdiera, todo el llavero quedaría ilegible).
+      allow get: if isOwner();
+      allow create: if isOwner()
+        && request.resource.data.keys().hasOnly(['wrappedKey'])
+        && request.resource.data.wrappedKey is string
+        && request.resource.data.wrappedKey.size() < 200;
+
+      match /items/{itemId} {
+        allow read, delete: if isOwner();
+        allow create, update: if isOwner()
+          && request.resource.data.keys().hasOnly(['data', 'updatedAt'])
+          && request.resource.data.data is string
+          && request.resource.data.data.size() < 100000
+          && request.resource.data.updatedAt == request.time;
+      }
+    }
+
+    // Todo lo demás, cerrado.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
