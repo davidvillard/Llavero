@@ -23,15 +23,17 @@ La versión aparece en la web (pantalla de entrada y barra lateral) y en la exte
    npm run dev
    ```
 
-### Publicarla (gratis, en Firebase Hosting)
+### Publicarla (gratis, en Vercel)
 
-```bash
-npm run build
-npx firebase-tools login
-npx firebase-tools deploy --project TU-PROJECT-ID
-```
+1. En [vercel.com/new](https://vercel.com/new), importa este repositorio de GitHub. Vercel detecta Vite; la configuración
+   (compilación, carpeta `dist` y cabeceras de seguridad) ya está en [`vercel.json`](vercel.json).
+2. Antes de pulsar *Deploy*, en *Environment Variables* añade las cuatro `VITE_FIREBASE_*` de tu `.env`.
+   Si las añades o cambias después, vuelve a desplegar: se incrustan al compilar.
+3. En Firebase, *Authentication › Settings › Authorized domains*, añade tu dominio de Vercel (p. ej. `llavero.vercel.app`).
 
-Esto sube la web y las reglas de [`firestore.rules`](firestore.rules). Te dará una dirección `https://TU-PROJECT-ID.web.app`.
+Desde entonces, cada `git push` a `main` publica la web sola. Las reglas de Firestore no viajan con la web:
+si cambias [`firestore.rules`](firestore.rules), pégalas en la consola (paso 4) o súbelas con
+`npx firebase-tools deploy --only firestore:rules --project TU-PROJECT-ID`.
 
 ## Extensión de navegador (Chrome, Edge, Brave)
 
