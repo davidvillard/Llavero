@@ -791,3 +791,64 @@ nav {
     grid-template-columns: 1fr;
   }
 }
+
+/* ---------- Ajustes ---------- */
+.settings-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 18px 18px;
+}
+.settings-section h2 {
+  margin: 0;
+  font-size: 16px;
+}
+.settings-section > p {
+  margin: 0;
+}
+.settings-inline {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.muted.small {
+  font-size: 13px;
+}
+.file-btn {
+  align-self: flex-start;
+  position: relative;
+  cursor: pointer;
+}
+.file-btn input {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.file-btn:focus-within {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+.segmented {
+  display: inline-flex;
+  align-self: flex-start;
+  padding: 3px;
+  gap: 2px;
+  border-radius: 10px;
+  background: var(--surface-2);
+}
+.segmented button {
+  font: inherit;
+  font-size: 14px;
+  border: 0;
+  padding: 6px 14px;
+  border-radius: 8px;
+  background: none;
+  color: var(--muted);
+  cursor: pointer;
+}
+.segmented button.active {
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: var(--shadow);
+}

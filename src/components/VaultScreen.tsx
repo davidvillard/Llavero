@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { deleteItem, loadItems, saveItem, type Item, type ItemData, type OpenVault } from '../lib/vault'
 import Generator from './Generator'
-import { ClockIcon, DiceIcon, KeyIcon, LockIcon, PlusIcon, SearchIcon, TagIcon } from './icons'
+import { ClockIcon, DiceIcon, GearIcon, KeyIcon, LockIcon, PlusIcon, SearchIcon, TagIcon } from './icons'
 import ItemDetail, { Avatar } from './ItemDetail'
 import ItemEditor from './ItemEditor'
+import SettingsPane from './SettingsPane'
 
 interface Props {
   vault: OpenVault
@@ -14,7 +15,7 @@ interface Props {
 /** 'all' | 'totp' | 'tag:<nombre>' */
 type Filter = string
 
-type Pane = { kind: 'none' } | { kind: 'view'; id: string } | { kind: 'edit'; id: string | null } | { kind: 'generator' }
+type Pane = { kind: 'none' } | { kind: 'view'; id: string } | { kind: 'edit'; id: string | null } | { kind: 'generator' } | { kind: 'settings' }
 
 export default function VaultScreen({ vault, onLock, onSignOut }: Props) {
   const [items, setItems] = useState<Item[] | null>(null)
@@ -103,6 +104,9 @@ export default function VaultScreen({ vault, onLock, onSignOut }: Props) {
           <button className="btn ghost block" onClick={() => setPane({ kind: 'generator' })}>
             <DiceIcon /> Generador
           </button>
+          <button className="btn ghost block" onClick={() => setPane({ kind: 'settings' })}>
+            <GearIcon /> Ajustes
+          </button>
           <button className="btn ghost block" onClick={onLock}>
             <LockIcon /> Bloquear
           </button>
@@ -131,6 +135,7 @@ export default function VaultScreen({ vault, onLock, onSignOut }: Props) {
             <Chip key={t} active={filter === 'tag:' + t} onClick={() => setFilter('tag:' + t)} label={t} />
           ))}
           <Chip active={false} onClick={() => setPane({ kind: 'generator' })} label="Generador" />
+          <Chip active={false} onClick={() => setPane({ kind: 'settings' })} label="Ajustes" />
           <Chip active={false} onClick={onLock} label="Bloquear" />
         </div>
 
@@ -205,6 +210,15 @@ export default function VaultScreen({ vault, onLock, onSignOut }: Props) {
               <Generator onCopy={(pw) => copy(pw, 'Contraseña')} />
             </div>
           </div>
+        )}
+        {pane.kind === 'settings' && items && (
+          <SettingsPane
+            vault={vault}
+            items={items}
+            onImported={(saved) => setItems((prev) => [...(prev ?? []), ...saved])}
+            onNotify={notify}
+            onBack={() => setPane({ kind: 'none' })}
+          />
         )}
       </section>
 

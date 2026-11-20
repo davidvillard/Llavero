@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { createVaultKey, decryptJson, deriveMasterKeys, encryptJson, unwrapVaultKey } from './crypto'
+import { createVaultKey, decryptJson, deriveMasterKeys, encryptJson, isBackup, rewrapVaultKey, unwrapVaultKey } from './crypto'
+import { exportBackup, exportCsv, importBackup, importCsv, parseCsv, withoutDuplicates } from './transfer'
 import { generatePassword } from './generator'
 import { base32Decode, parseTotp, totpCode } from './totp'
 import { hostMatches, hostOf, safeHref } from './url'
@@ -89,4 +90,71 @@ describe('generador', () => {
   it('exige al menos un tipo', () => {
     expect(() => generatePassword({ length: 10, upper: false, lower: false, digits: false, symbols: false })).toThrow()
   })
+})
+
+describe('importar y exportar', () => {
+  it('lee CSV con comillas, comas y saltos de línea', () => {
+    expect(parseCsv('a,b\r\n"x, ""y""","línea 1\nlínea 2"\n')).toEqual([
+      ['a', 'b'],
+      ['x, "y"', 'línea 1\nlínea 2'],
+    ])
+  })
+
+  it('entiende el CSV de Chrome', () => {
+    const r = importCsv('name,url,username,password,note\ngithub.com,https://github.com/login,ana,s3cr3t ,nota\n')
+    expect(r.items).toEqual([{ title: 'github.com', url: 'https://github.com/login', username: 'ana', password: 's3cr3t ', totp: '', notes: 'nota', tags: [] }])
+  })
+
+  it('entiende el CSV de Bitwarden (carpeta, 2FA y notas seguras)', () => {
+    const csv = [
+      'folder,favorite,type,name,notes,fields,reprompt,login_uri,login_username,login_password,login_totp',
+      'Trabajo,,login,Correo,,,0,https://mail.ejemplo.com,ana@ejemplo.com,pw1,JBSWY3DPEHPK3PXP',
+      ',,note,Nota secreta,texto,,0,,,,',
+      ',,login,Raro,,,0,raro.com,yo,pw2,steam://ABC',
+    ].join('\n')
+    const r = importCsv(csv)
+    expect(r.skipped).toBe(1)
+    expect(r.items[0]).toMatchObject({ title: 'Correo', tags: ['Trabajo'], totp: 'JBSWY3DPEHPK3PXP' })
+    expect(r.items[1].totp).toBe('')
+    expect(r.items[1].notes).toContain('steam://ABC')
+  })
+
+  it('pone el dominio como título si no hay nombre (Firefox)', () => {
+    expect(importCsv('url,username,password\nhttps://www.foro.es,pepe,x').items[0].title).toBe('foro.es')
+  })
+
+  it('rechaza archivos sin contraseñas', () => {
+    expect(() => importCsv('a,b\n1,2')).toThrow()
+  })
+
+  it('exporta y vuelve a importar sin perder nada', () => {
+    const item = { title: 'Banco, "personal"', url: 'https://banco.es', username: 'yo', password: ' =1,2"\n3 ', totp: 'JBSWY3DPEHPK3PXP', notes: 'a\nb', tags: ['casa', 'dinero'] }
+    expect(importCsv(exportCsv([item])).items).toEqual([item])
+  })
+
+  it('quita repetidas del archivo y del llavero', () => {
+    const a = { title: 'A', url: 'https://www.a.com', username: 'Yo', password: 'p', totp: '', notes: '', tags: [] }
+    const b = { ...a, url: 'a.com/login', username: 'yo', notes: 'otra nota' }
+    const c = { ...a, password: 'otra' }
+    expect(withoutDuplicates([b, c, c], [a])).toEqual({ fresh: [c], duplicates: 2 })
+  })
+
+  it('copia cifrada: abre con su contraseña y falla con otra', async () => {
+    const item = { title: 'T', url: '', username: 'u', password: 'p', totp: '', notes: '', tags: ['x'] }
+    const file = await exportBackup([item], 'copia-segura-123')
+    expect(file).not.toContain('"p"')
+    expect(isBackup(file)).toBe(true)
+    expect((await importBackup(file, 'copia-segura-123')).items).toEqual([item])
+    await expect(importBackup(file, 'otra-contraseña')).rejects.toThrow(/incorrecta/)
+  })
+
+  it('reenvuelve la clave del llavero con la nueva contraseña maestra', async () => {
+    const before = await deriveMasterKeys('a@b.c', 'maestra-antigua')
+    const after = await deriveMasterKeys('a@b.c', 'maestra-nueva-1')
+    const { vaultKey, wrapped } = await createVaultKey(before.wrapKey, 'uid1')
+    const sealed = await encryptJson(vaultKey, 'i1', { ok: 1 })
+    const rewrapped = await rewrapVaultKey(before.wrapKey, after.wrapKey, wrapped, 'uid1')
+    expect(await decryptJson(await unwrapVaultKey(after.wrapKey, rewrapped, 'uid1'), 'i1', sealed)).toEqual({ ok: 1 })
+    await expect(unwrapVaultKey(before.wrapKey, rewrapped, 'uid1')).rejects.toThrow()
+  }, 20000)
 })

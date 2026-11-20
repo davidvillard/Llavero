@@ -5,7 +5,8 @@ Las contraseñas se **cifran en tu navegador** con tu contraseña maestra; Fireb
 
 **Web (v1.0):** contraseña maestra · guardar / editar / borrar · generador · copiar al portapapeles · códigos 2FA (TOTP) · buscador y etiquetas · bloqueo automático a los 5 minutos.
 **Extensión (v1.1–1.2):** rellena usuario y contraseña, ofrece guardar o actualizar al iniciar sesión, sugiere contraseñas seguras al registrarte, copia códigos 2FA, atajo `Alt+Shift+L`.
-**Pendiente:** passkeys, cambiar la contraseña maestra, exportar.
+**Ajustes (v1.3):** cambiar la contraseña maestra · importar CSV de Chrome, Apple, Bitwarden, 1Password, LastPass o Firefox · exportar en CSV o en una copia cifrada.
+**Pendiente:** passkeys.
 
 La versión aparece en la web (pantalla de entrada y barra lateral) y en la extensión. Cada commit lleva su versión y una etiqueta `vX.Y.Z`.
 
@@ -34,6 +35,13 @@ La versión aparece en la web (pantalla de entrada y barra lateral) y en la exte
 Desde entonces, cada `git push` a `main` publica la web sola. Las reglas de Firestore no viajan con la web:
 si cambias [`firestore.rules`](firestore.rules), pégalas en la consola (paso 4) o súbelas con
 `npx firebase-tools deploy --only firestore:rules --project TU-PROJECT-ID`.
+
+### Opcional: limitar la `apiKey` a lo que usa el Llavero
+
+En [Google Cloud › Credenciales](https://console.cloud.google.com/apis/credentials), abre la clave *Browser key* del proyecto
+y en *Restricciones de API* deja solo: **Identity Toolkit API**, **Token Service API**, **Cloud Firestore API** y
+**Cloud Datastore API**. No pongas *Restricciones de aplicaciones › Sitios web*: Google no documenta que admita
+extensiones (`chrome-extension://`) y la extensión podría dejar de funcionar. La protección de verdad sigue siendo el cifrado y las reglas.
 
 ## Extensión de navegador (Chrome, Edge, Brave)
 
@@ -72,7 +80,13 @@ clave del llavero (aleatoria, AES-256-GCM) ──▶ cifra cada entrada entera (
 
 - El servidor nunca recibe la contraseña maestra ni ninguna clave que permita descifrar.
 - Cada entrada está ligada a su id, así que no se puede mover un cifrado de una entrada a otra.
-- Las reglas de Firestore hacen que cada usuario solo pueda leer y tocar lo suyo, y que la clave del llavero no se pueda sobrescribir.
+- Las reglas de Firestore hacen que cada usuario solo pueda leer y tocar lo suyo, y que la clave del llavero no se pueda borrar
+  ni sobrescribir de golpe.
+- **Cambiar la contraseña maestra** no vuelve a cifrar las entradas: la clave del llavero es la misma y solo cambian su envoltorio
+  y la contraseña de login. Se hace en tres pasos (guardar la nueva junto a la actual, cambiar el login, dejar solo la nueva),
+  así que si se corta a medias nunca te quedas fuera: entras con la que tenga el login y ese inicio de sesión termina el cambio.
+- **Exportar** pide la contraseña maestra. La copia cifrada usa su propia contraseña (PBKDF2 con sal aleatoria + AES-256-GCM)
+  y se puede importar sin la cuenta. El CSV va sin cifrar: bórralo en cuanto lo uses.
 - La clave se guarda solo en memoria: al recargar la página o tras 5 minutos sin actividad, el llavero se bloquea.
 - **Si olvidas la contraseña maestra no hay forma de recuperar los datos.** No uses "restablecer contraseña" de Firebase:
   cambiaría el login pero no podría descifrar nada.

@@ -4,7 +4,7 @@ Lista viva de ideas. Cada una tiene: qué es, funciones, y notas a tener en cuen
 
 | # | Idea | Estado |
 |---|------|--------|
-| 1 | Gestor de contraseñas web | ✅ v1.2 — web + extensión (rellena y guarda) — ver README.md |
+| 1 | Gestor de contraseñas web | ✅ v1.3 — web + extensión + ajustes (cambiar maestra, importar, exportar) — ver README.md |
 | 2 | Galería de cosas interesantes | 💡 Idea |
 
 ---

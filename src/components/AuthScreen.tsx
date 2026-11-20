@@ -12,6 +12,19 @@ interface Props {
 
 const STRENGTH_LABELS = ['Débil', 'Aceptable', 'Fuerte', 'Muy fuerte']
 
+export function StrengthMeter({ password }: { password: string }) {
+  if (!password) return null
+  const level = strength(password)
+  return (
+    <div className={`strength s${level}`} aria-live="polite">
+      <div className="strength-bar">
+        <i />
+      </div>
+      <span>{STRENGTH_LABELS[level]}</span>
+    </div>
+  )
+}
+
 export default function AuthScreen({ lockedEmail, onOpen, onUseOtherAccount }: Props) {
   const [mode, setMode] = useState<'login' | 'register'>('login')
   const [email, setEmail] = useState(lockedEmail ?? '')
@@ -22,7 +35,6 @@ export default function AuthScreen({ lockedEmail, onOpen, onUseOtherAccount }: P
   const [error, setError] = useState('')
 
   const registering = mode === 'register'
-  const level = strength(master)
 
   async function submit(e: FormEvent) {
     e.preventDefault()
@@ -79,14 +91,7 @@ export default function AuthScreen({ lockedEmail, onOpen, onUseOtherAccount }: P
 
         {registering && (
           <>
-            {master && (
-              <div className={`strength s${level}`} aria-live="polite">
-                <div className="strength-bar">
-                  <i />
-                </div>
-                <span>{STRENGTH_LABELS[level]}</span>
-              </div>
-            )}
+            <StrengthMeter password={master} />
             <label className="field">
               <span>Repite la contraseña maestra</span>
               <input type="password" autoComplete="new-password" required value={confirm} onChange={(e) => setConfirm(e.target.value)} />

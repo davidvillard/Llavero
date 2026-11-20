@@ -9,13 +9,29 @@ service cloud.firestore {
         return request.auth != null && request.auth.uid == uid;
       }
 
-      // Clave del llavero: se puede leer y crear, pero nunca sobrescribir ni borrar
-      // (si se perdiera, todo el llavero quedaría ilegible).
+      function isKey(value) {
+        return value is string && value.size() < 200;
+      }
+
+      // Clave del llavero: nunca se puede borrar ni sobrescribir de golpe (todo quedaría ilegible).
+      // Al cambiar la contraseña maestra se hace en dos pasos:
+      //   1) se deja la actual tal cual y se añade la nueva en nextWrappedKey;
+      //   2) la nueva pasa a ser wrappedKey, y solo puede ser exactamente la del paso 1.
+      // Así, dos dispositivos que crean el llavero a la vez nunca se pisan la clave.
       allow get: if isOwner();
       allow create: if isOwner()
         && request.resource.data.keys().hasOnly(['wrappedKey'])
-        && request.resource.data.wrappedKey is string
-        && request.resource.data.wrappedKey.size() < 200;
+        && isKey(request.resource.data.wrappedKey);
+      allow update: if isOwner()
+        && request.resource.data.keys().hasOnly(['wrappedKey', 'nextWrappedKey'])
+        && isKey(request.resource.data.wrappedKey)
+        && (
+          ('nextWrappedKey' in request.resource.data
+            && isKey(request.resource.data.nextWrappedKey)
+            && request.resource.data.wrappedKey == resource.data.wrappedKey)
+          || (!('nextWrappedKey' in request.resource.data)
+            && request.resource.data.wrappedKey == resource.data.get('nextWrappedKey', null))
+        );
 
       match /items/{itemId} {
         allow read, delete: if isOwner();

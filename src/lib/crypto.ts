@@ -104,6 +104,19 @@ export async function unwrapVaultKey(wrapKey: CryptoKey, wrapped: string, userId
   return key
 }
 
+/**
+ * Vuelve a envolver la clave del llavero con otra clave (cambio de contraseña maestra).
+ * La clave en claro solo existe un instante en memoria; las entradas no cambian.
+ */
+export async function rewrapVaultKey(oldWrapKey: CryptoKey, newWrapKey: CryptoKey, wrapped: string, userId: string): Promise<string> {
+  const raw = await open(oldWrapKey, wrapped, 'vault-key:' + userId)
+  try {
+    return await seal(newWrapKey, raw, 'vault-key:' + userId)
+  } finally {
+    raw.fill(0)
+  }
+}
+
 export function importVaultKey(raw: Uint8Array<ArrayBuffer>, extractable = false): Promise<CryptoKey> {
   return crypto.subtle.importKey('raw', raw, 'AES-GCM', extractable, ['encrypt', 'decrypt'])
 }
@@ -119,4 +132,48 @@ export function encryptJson(vaultKey: CryptoKey, id: string, value: unknown): Pr
 
 export async function decryptJson<T>(vaultKey: CryptoKey, id: string, sealed: string): Promise<T> {
   return JSON.parse(dec.decode(await open(vaultKey, sealed, 'item:' + id))) as T
+}
+
+// Copia de seguridad: un archivo que se abre solo con su contraseña, sin cuenta ni servidor.
+// Sal aleatoria propia, así no depende del email ni de la clave del llavero.
+
+const BACKUP_FORMAT = 'llavero-backup'
+const BACKUP_CONTEXT = 'llavero-backup-v1'
+
+async function backupKey(password: string, salt: Uint8Array<ArrayBuffer>, iterations: number): Promise<CryptoKey> {
+  const material = await crypto.subtle.importKey('raw', enc.encode(password), 'PBKDF2', false, ['deriveKey'])
+  return crypto.subtle.deriveKey({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations }, material, { name: 'AES-GCM', length: 256 }, false, [
+    'encrypt',
+    'decrypt',
+  ])
+}
+
+export async function encryptBackup(password: string, value: unknown): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16))
+  const key = await backupKey(password, salt, PBKDF2_ITERATIONS)
+  const data = await seal(key, enc.encode(JSON.stringify(value)), BACKUP_CONTEXT)
+  return JSON.stringify({ format: BACKUP_FORMAT, version: 1, kdf: 'PBKDF2-SHA256', iterations: PBKDF2_ITERATIONS, salt: toBase64(salt), data }, null, 2)
+}
+
+export function isBackup(text: string): boolean {
+  try {
+    return JSON.parse(text)?.format === BACKUP_FORMAT
+  } catch {
+    return false
+  }
+}
+
+export async function decryptBackup<T>(password: string, text: string): Promise<T> {
+  const file = JSON.parse(text)
+  if (file?.format !== BACKUP_FORMAT || file.version !== 1) throw new Error('Este archivo no es una copia del Llavero.')
+  const iterations = Number(file.iterations)
+  if (!Number.isInteger(iterations) || iterations < 100_000 || iterations > 10_000_000) throw new Error('La copia está dañada.')
+  const key = await backupKey(password, fromBase64(file.salt), iterations)
+  let bytes: Uint8Array
+  try {
+    bytes = await open(key, file.data, BACKUP_CONTEXT)
+  } catch {
+    throw new Error('Contraseña de la copia incorrecta, o el archivo está dañado.')
+  }
+  return JSON.parse(dec.decode(bytes)) as T
 }
